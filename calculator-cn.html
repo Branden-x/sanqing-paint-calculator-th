@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>三青漆 · 涂刷改色用量计算器</title>
+<style>
+  :root{
+    --teal:#0b6e5c; --teal-d:#094f43; --teal-bg:#e8f3ef;
+    --orange:#e8833a; --orange-bg:#fdf1e7;
+    --ink:#22312d; --sub:#5f726d; --line:#dde8e3;
+    --card:#ffffff; --bg:#f2f7f5; --danger:#c0392b;
+    --radius:16px;
+    --shadow:0 6px 24px rgba(11,110,92,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.6;
+  }
+  .hero{
+    background:linear-gradient(135deg,var(--teal) 0%,var(--teal-d) 100%);
+    color:#fff; padding:34px 20px 30px; text-align:center;
+  }
+  .hero h1{font-size:26px;letter-spacing:1px}
+  .hero p{margin-top:8px;font-size:14px;opacity:.85}
+  .hero .badge{display:inline-block;margin-top:12px;padding:4px 14px;border-radius:999px;
+    background:rgba(255,255,255,.15);font-size:12px;border:1px solid rgba(255,255,255,.25)}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 16px 40px}
+  .grid{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;align-items:start}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:22px 24px;border:1px solid var(--line)}
+  .card h2{font-size:17px;display:flex;align-items:center;gap:8px;margin-bottom:16px}
+  .card h2 .num{display:inline-flex;width:22px;height:22px;border-radius:50%;
+    background:var(--teal);color:#fff;font-size:13px;align-items:center;justify-content:center;flex:none}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+  .field .hint{font-weight:400;color:var(--sub);font-size:12px;margin-left:6px}
+  select,input[type=number],input[type=text]{
+    width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;
+    font-size:15px;color:var(--ink);background:#fbfdfc;outline:none;transition:border-color .15s;
+  }
+  select:focus,input:focus{border-color:var(--teal)}
+  .pills{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{border:1.5px solid var(--line);border-radius:999px;padding:7px 16px;font-size:14px;
+    cursor:pointer;background:#fff;color:var(--sub);user-select:none;transition:all .15s}
+  .pill.active{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600}
+  .pill:not(.active):hover{border-color:var(--teal);color:var(--teal)}
+  .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .row2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  @media(max-width:520px){.row3{grid-template-columns:1fr 1fr}}
+  .computed{font-size:13px;color:var(--teal);background:var(--teal-bg);border-radius:8px;
+    padding:6px 10px;margin-top:8px;display:none}
+  .computed.show{display:block}
+  .chk{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+  .chk input{width:16px;height:16px;accent-color:var(--teal)}
+  .btn-row{display:flex;gap:10px;margin-top:6px}
+  .btn{border:none;border-radius:10px;padding:10px 18px;font-size:14px;cursor:pointer;font-weight:600}
+  .btn-primary{background:var(--orange);color:#fff;flex:1}
+  .btn-primary:hover{filter:brightness(1.05)}
+  .btn-ghost{background:var(--bg);color:var(--sub);border:1px solid var(--line)}
+  .note-extra{font-size:12px;color:var(--sub);margin-top:12px;padding:10px 12px;
+    background:var(--bg);border-radius:10px}
+  /* 结果卡 */
+  .result{position:sticky;top:16px}
+  @media(max-width:880px){.result{position:static}}
+  .empty{color:var(--sub);text-align:center;padding:34px 10px;font-size:14px}
+  .empty .icon{font-size:34px;display:block;margin-bottom:10px}
+  .rs-line{font-size:13px;color:var(--sub);margin-bottom:6px}
+  .rs-total{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:14px}
+  .rs-total b{color:var(--teal);font-size:17px}
+  .buckets{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+  .bucket{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--teal-bg);border:1px solid #cfe5dc;border-radius:12px;padding:12px 16px}
+  .bucket .b-num{font-size:26px;font-weight:800;color:var(--teal);line-height:1}
+  .bucket .b-num small{font-size:13px;font-weight:600}
+  .bucket .b-name{font-size:14px;color:var(--ink);text-align:right}
+  .bucket.alt{background:var(--orange-bg);border-color:#f4d9c2}
+  .bucket.alt .b-num{color:var(--orange)}
+  .bucket.main{border-width:2px;box-shadow:0 2px 10px rgba(11,110,92,.10)}
+  .sec-title{font-size:13px;font-weight:700;color:var(--sub);margin:14px 0 8px;
+    padding-bottom:4px;border-bottom:1px dashed var(--line)}
+  .steps{font-size:13px;color:var(--sub);background:var(--bg);border-radius:10px;
+    padding:10px 14px;list-style:none}
+  .steps li{padding:3px 0;border-bottom:1px dashed #e6eee9}
+  .steps li:last-child{border-bottom:none;color:var(--teal);font-weight:600}
+  .tips{font-size:13px;color:var(--sub);padding-left:18px}
+  .tips li{margin:3px 0}
+  .warn{color:var(--danger);font-size:13px;font-weight:600}
+  .copy-btn{margin-top:14px;width:100%;background:var(--teal);color:#fff;border:none;
+    border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer}
+  .copy-btn:hover{background:var(--teal-d)}
+  /* 速查表 */
+  .table-card{margin-top:20px}
+  .table-card summary{cursor:pointer;font-size:17px;font-weight:700;color:var(--ink);padding:4px 0}
+  .table-card summary:hover{color:var(--teal)}
+  .table-card.open-info{margin-top:14px;font-size:12px;color:var(--sub);margin-bottom:10px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--teal-bg);color:var(--teal-d);font-weight:700;white-space:nowrap}
+  tr:nth-child(even) td{background:#fafcfb}
+  .table-wrap{overflow-x:auto}
+  .interval-table{margin-top:0}
+  .interval-table th,.interval-table td{white-space:nowrap}
+  .interval-table tr.matched td{background:var(--orange-bg)!important;font-weight:700;color:var(--teal-d)}
+  .interval-card h2 .hint{font-weight:400;color:var(--sub);font-size:12px;margin-left:6px}
+  footer{text-align:center;color:var(--sub);font-size:12px;padding:8px 16px 30px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>三青漆 · 涂刷改色用量计算器</h1>
+  <p>选择产品 → 输入尺寸（如 3x3x2.8）→ 自动给出建议购买数量</p>
+</header>
+
+<main class="wrap">
+  <section class="grid">
+
+    <!-- 左：输入区 -->
+    <div class="card">
+      <h2><span class="num">1</span>填写施工信息</h2>
+
+      <div class="field">
+        <label>选择产品</label>
+        <select id="productSel"></select>
+      </div>
+
+      <div class="field" id="colorField">
+        <label>目标颜色 <span class="hint">浅色盖深色需多刷几遍</span></label>
+        <div class="pills" id="colorPills">
+          <span class="pill active" data-v="light">浅色</span>
+          <span class="pill" data-v="dark">深色</span>
+        </div>
+      </div>
+
+      <div class="field" id="coatsField">
+        <label>涂刷遍数 <span class="hint" id="coatsHint"></span></label>
+        <input type="number" id="coatsNum" min="1" max="6" step="1" value="4">
+      </div>
+
+      <div class="field">
+        <label>尺寸（米）<span class="hint">直接输入，如 3x3（单面）或 3x3x2.8（长宽高）；x 可用 ×、* 或空格代替</span></label>
+        <input type="text" id="dimsIn" placeholder="例如：3x3 或 3x3x2.8">
+      </div>
+        <div class="row2 hidden" id="roomExtra">
+          <div class="field"><label>门窗面积（㎡，选填）<span class="hint">从墙面扣除</span></label>
+            <input type="number" id="openIn" min="0" step="0.1" value="0"></div>
+          <div class="field"><label>&nbsp;</label>
+            <label class="chk"><input type="checkbox" id="ceilingChk"> 同时刷天花板</label></div>
+        </div>
+        <div class="computed" id="dimComputed"></div>
+        <div class="note-extra" id="dimNote"></div>
+      </div>
+
+      <div class="note-extra" id="selectNote">玻璃漆、金箔漆、美缝笔、墙面喷漆等品类暂未在用量表中提供参数，本计算器仅覆盖已有官方用量公式的产品。</div>
+    </div>
+
+    <!-- 右：结果区 -->
+    <div class="card result">
+      <h2><span class="num">2</span>用量建议</h2>
+      <div id="resultBox">
+        <div class="empty"><span class="icon">🪣</span>填写左侧信息后，这里会自动给出<br>建议购买数量与组合方案</div>
+      </div>
+      <button class="copy-btn hidden" id="copyBtn">📋 复制用量建议（可直接发给客户）</button>
+    </div>
+
+  </section>
+
+  <!-- 用量区间对照表 -->
+  <div class="card table-card interval-card">
+    <h2><span class="num">3</span>用量区间对照表 <span class="hint" id="intervalTitle"></span></h2>
+    <div id="intervalBox"></div>
+  </div>
+
+  <!-- 速查表 -->
+  <details class="card table-card" open>
+    <summary>📋 各产品用量速查表</summary>
+    <table>
+      <thead>
+        <tr><th>品类</th><th>适用情况</th><th>建议遍数</th><th>覆盖率</th><th>单遍用量</th><th>包装规格</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>木器漆 / 金属漆 / 塑钢漆</td><td>刷浅色</td><td>3-4遍（按4遍计）</td><td>1L约刷10㎡/遍</td><td>100ml/㎡/遍</td><td>500ml / 1000ml（约1kg）</td></tr>
+        <tr><td>木器漆 / 金属漆 / 塑钢漆</td><td>刷深色</td><td>2遍</td><td>1L约刷10㎡/遍</td><td>100ml/㎡/遍</td><td>500ml / 1000ml（约1kg）</td></tr>
+        <tr><td>木蜡油 / 木纹漆</td><td>不分深浅</td><td>2遍</td><td>1kg约刷10㎡/遍</td><td>100g/㎡/遍</td><td>500g（500ml）/ 1000g（1000ml）</td></tr>
+        <tr><td>瓷砖处理剂</td><td>瓷砖打底（必刷）</td><td>2遍</td><td>1000ml约刷10㎡/2遍</td><td>50ml/㎡/遍</td><td>500ml / 1000ml</td></tr>
+        <tr><td>瓷砖漆</td><td>刷浅色</td><td>3-4遍（按4遍计）</td><td>1L约刷10㎡/遍</td><td>100ml/㎡/遍</td><td>500ml / 1000ml（约1kg）</td></tr>
+        <tr><td>瓷砖漆</td><td>刷深色</td><td>2遍</td><td>1L约刷10㎡/遍</td><td>100ml/㎡/遍</td><td>500ml / 1000ml（约1kg）</td></tr>
+        <tr><td>地坪漆封闭底漆</td><td>地面打底</td><td>1遍</td><td>1L约刷10㎡/遍</td><td>100ml/㎡/遍</td><td>1000ml（约1kg）</td></tr>
+        <tr><td>地坪漆颜色漆</td><td>地面面漆</td><td>2遍</td><td>1L约刷5㎡/2遍</td><td>100ml/㎡/遍</td><td>1000ml（约1kg）</td></tr>
+        <tr><td>地坪漆罩光清漆</td><td>地面罩面</td><td>1遍</td><td>1L约刷10㎡/遍</td><td>100ml/㎡/遍</td><td>1000ml（约1kg）</td></tr>
+        <tr><td>墙面漆</td><td>不分深浅</td><td>2遍</td><td>1.1L约刷10㎡/遍</td><td>110ml/㎡/遍</td><td>1.1L</td></tr>
+        <tr><td>环氧自流平地坪漆</td><td>不分深浅</td><td>1遍</td><td>1kg约刮涂3mm厚3㎡</td><td>约333g/㎡</td><td>1kg套装（800g主剂+200g固化剂）</td></tr>
+        <tr><td>环氧地坪漆</td><td>不分深浅</td><td>2遍</td><td>0.8kg约刷8㎡/遍；3kg约刷30㎡/遍</td><td>100g/㎡/遍</td><td>0.4kg+0.4kg / 1.5kg+1.5kg套装</td></tr>
+      </tbody>
+    </table>
+  </details>
+</main>
+
+<footer>三青漆用量计算器 · 生成于 2026-09-28 · 理论用量仅供参考，实际施工请结合损耗预留余量</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ 产品数据（包装规格与覆盖率） ============ */
+  var PRODUCTS = [
+    {
+      id:'wood', label:'木器漆 / 金属漆 / 塑钢漆', group:'家具与门窗翻新',
+      colorDepth:true, coatsDefault:{light:4, dark:2},
+      coatsHint:'浅色建议3-4遍，深色建议2遍',
+      calc:'liters', coveragePerL:10,
+      packs:[{sizeL:1,label:'1000ml（约1kg）'},{sizeL:0.5,label:'500ml（约500g）'}],
+      shapeType:'box',
+      tips:['浅色漆建议涂刷3-4遍、深色漆2遍（深色覆盖力更强）',
+            '施工步骤：开盖搅匀 → 分次涂刷 → 等待干燥即可',
+            '衣柜等家具可填 长x宽x高（按六面体表面积计）；只刷桌面/单面可只填两个数（如 3x2）',
+            '建议预留约10%损耗余量']
+    },
+    {
+      id:'waxoil', label:'木蜡油 / 木纹漆', group:'家具与门窗翻新',
+      colorDepth:false, coatsDefault:2, coatsHint:'不分深浅，建议2遍',
+      calc:'liters', coveragePerL:10,
+      packs:[{sizeL:1,label:'1000ml（约1000g）'},{sizeL:0.5,label:'500ml（约500g）'}],
+      shapeType:'box',
+      tips:['木蜡油/木纹漆不分深浅色，建议刷2遍',
+            '500g约刷5㎡/遍，1kg约刷10㎡/遍',
+            '家具可填 长x宽x高 按六面体表面积计算；单面可只填两个数（如 3x2）',
+            '建议预留约10%损耗余量']
+    },
+    {
+      id:'tileprimer', label:'瓷砖处理剂', group:'瓷砖翻新',
+      colorDepth:false, coatsDefault:2, coatsLocked:true,
+      coatsHint:'处理瓷砖必须刷2遍',
+      calc:'liters', coveragePerL:20,
+      packs:[{sizeL:1,label:'1000ml'},{sizeL:0.5,label:'500ml'}],
+      shapeType:'room',
+      tips:['处理剂必须刷2遍，刷2遍更均匀、处理更到位',
+            '1000ml约刷10㎡/2遍，500ml约刷5㎡/2遍',
+            '处理剂打底干燥后再刷瓷砖漆',
+            '只刷地面时只填两个数（如 3x3）即可']
+    },
+    {
+      id:'tilepaint', label:'瓷砖漆', group:'瓷砖翻新',
+      colorDepth:true, coatsDefault:{light:4, dark:2},
+      coatsHint:'浅色建议3-4遍，深色建议2遍',
+      calc:'liters', coveragePerL:10,
+      packs:[{sizeL:1,label:'1000ml'},{sizeL:0.5,label:'500ml'}],
+      shapeType:'room',
+      tips:['浅色漆建议涂刷4遍、深色漆2遍',
+            '瓷砖表面先刷瓷砖处理剂，可增强附着力',
+            '1L瓷砖漆需按产品说明比例添加固化剂',
+            '只刷地面时只填两个数（如 3x3）；只刷一面墙也只填两个数（如 3x2.8）']
+    },
+    {
+      id:'floorsys', label:'地坪漆（封闭底漆 + 颜色漆 + 罩光清漆）', group:'地面翻新',
+      colorDepth:false, coatsLocked:true,
+      coatsHint:'底漆1遍、颜色漆2遍、清漆1遍（固定工艺）',
+      calc:'floorsys',
+      parts:[
+        {name:'封闭底漆', coats:1, coverageJobPerL:10},
+        {name:'颜色漆',   coats:2, coverageJobPerL:5},
+        {name:'罩光清漆', coats:1, coverageJobPerL:10}
+      ],
+      packs:[{sizeL:1,label:'1000ml（约1kg）'}],
+      shapeType:'floor',
+      tips:['施工顺序：封闭底漆 → 颜色漆 → 罩光清漆',
+            '颜色漆建议刷2遍，1L约刷5㎡/2遍',
+            '建议预留约10%损耗余量']
+    },
+    {
+      id:'wall', label:'墙面漆', group:'墙面翻新',
+      colorDepth:false, coatsDefault:2, coatsHint:'不分深浅，建议2遍',
+      calc:'wall', coveragePerPack:10,
+      packs:[{label:'1.1L（约1.1kg）'}],
+      shapeType:'room',
+      tips:['1.1L墙面漆约可刷10㎡/1遍，建议刷2遍',
+            '只刷一面墙时，只填两个数（如 3x2.8）即可按单面面积计算',
+            '快速估算：只刷墙面≈占地面积×2；墙面+天花板≈占地面积×3',
+            '有坑洞或掉粉的墙面，先用修补膏修补或刷界面剂']
+    },
+    {
+      id:'selflevel', label:'环氧自流平地坪漆', group:'地面翻新',
+      colorDepth:false, coatsLocked:true, coatsDefault:1,
+      coatsHint:'刮涂1遍（约3mm厚）',
+      calc:'selflevel', areaPerKg:3,
+      packs:[{label:'1kg套装（800g主剂+200g固化剂）'}],
+      shapeType:'floor',
+      tips:['1kg可刮涂3mm厚约3㎡左右',
+            '施工前地面需打磨清理干净、无油污']
+    },
+    {
+      id:'epoxyfloor', label:'环氧地坪漆', group:'地面翻新',
+      colorDepth:false, coatsLocked:true, coatsDefault:2,
+      coatsHint:'不分深浅，建议2遍',
+      calc:'epoxyfloor', kgPerCoatSqm:0.1,
+      packs:[
+        {label:'大套装（1.5kg主剂+1.5kg固化剂）', kg:3, coversJob:15},
+        {label:'小套装（0.4kg主剂+0.4kg固化剂）', kg:0.8, coversJob:4}
+      ],
+      shapeType:'floor',
+      tips:['0.4kg+0.4kg固化剂约刷8㎡/1遍；1.5kg+1.5kg约刷30㎡/1遍',
+            '建议刷2遍，约需0.2kg/㎡',
+            '建议预留约10%损耗余量']
+    }
+  ];
+
+  var GROUPS = ['家具与门窗翻新','瓷砖翻新','地面翻新','墙面翻新'];
+
+  /* ============ 工具函数 ============ */
+  function $(id){ return document.getElementById(id); }
+  function fmt(n){
+    if(!isFinite(n)) return '—';
+    return String(Math.round(n*100)/100);
+  }
+  function ceil(n){ return Math.ceil(n - 1e-9); }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  /* ============ 状态 ============ */
+  var state = {
+    productId:'wood', color:'light', coats:4, coatsTouched:false
+  };
+
+  /* ============ 渲染输入区 ============ */
+  function buildSelect(){
+    var sel = $('productSel'), html = '';
+    GROUPS.forEach(function(g){
+      var items = PRODUCTS.filter(function(p){ return p.group===g; });
+      if(!items.length) return;
+      html += '<optgroup label="'+esc(g)+'">';
+      items.forEach(function(p){ html += '<option value="'+p.id+'">'+esc(p.label)+'</option>'; });
+      html += '</optgroup>';
+    });
+    sel.innerHTML = html;
+    sel.value = state.productId;
+    sel.addEventListener('change', function(){
+      state.productId = sel.value;
+      state.coatsTouched = false;
+      var p = cur();
+      state.color = p.colorDepth ? 'light' : state.color;
+      renderAll();
+    });
+  }
+
+  function cur(){
+    for(var i=0;i<PRODUCTS.length;i++) if(PRODUCTS[i].id===state.productId) return PRODUCTS[i];
+    return PRODUCTS[0];
+  }
+
+  function suggestedCoats(p){
+    if(p.coatsLocked) return p.coatsDefault;
+    if(p.colorDepth) return p.coatsDefault[state.color];
+    return p.coatsDefault;
+  }
+
+  function bindPills(groupId, key, onPick){
+    var el = $(groupId);
+    el.addEventListener('click', function(e){
+      var t = e.target.closest('.pill'); if(!t) return;
+      el.querySelectorAll('.pill').forEach(function(x){ x.classList.remove('active'); });
+      t.classList.add('active');
+      onPick(t.getAttribute('data-v'));
+    });
+  }
+
+  function renderAll(){
+    var p = cur();
+
+    // 颜色
+    $('colorField').classList.toggle('hidden', !p.colorDepth);
+    // 遍数
+    $('coatsField').classList.toggle('hidden', !!p.coatsLocked);
+    if(!p.coatsLocked){
+      $('coatsHint').textContent = p.coatsHint || '';
+      if(!state.coatsTouched){ state.coats = suggestedCoats(p); }
+    } else { state.coats = suggestedCoats(p); }
+    $('coatsNum').value = state.coats;
+
+    // 尺寸填写规则说明
+    var noteMap = {
+      room: '填 长x宽x高（如 4x3x2.8）＝按房间墙面 2×(长+宽)×高 计算（可扣门窗、可选加天花板）',
+      box: '填 长x宽x高（如 2x1.5x0.5）＝按六面体表面积 2×(长×宽+长×高+宽×高) 计算（衣柜、家具等）',
+      floor: '填 长x宽x高 ＝按地面 长×宽 计算（高自动忽略）'
+    };
+    $('dimNote').textContent = noteMap[p.shapeType]
+      + '；只填一个数＝直接按面积，两个数＝单面面积（如 3x3）。x 可用 ×、* 或空格代替。';
+
+    calc();
+  }
+
+  /* ============ 尺寸解析：支持 3x3、3×3、3*3、3 3、3x3x2.8 等 ============ */
+  function parseDims(raw){
+    var s = String(raw || '').replace(/米|㎡|m²|m2|平方|m/gi, '');
+    var parts = s.split(/[x×X*·，,、\s]+/).map(function(t){
+      var x = parseFloat(t);
+      return (isFinite(x) && x>0) ? x : 0;
+    });
+    return parts.filter(function(x){ return x>0; });
+  }
+
+  /* ============ 取面积（空/0 自动跳过） ============ */
+  function getArea(){
+    var p = cur();
+    var dims = parseDims($('dimsIn').value);
+    if(!dims.length) return {area:0, dims:dims, err:'请输入尺寸，如 3x3 或 3x3x2.8', text:''};
+    if(dims.length>3) return {area:0, dims:dims, err:'最多输入三个数值（长x宽x高）', text:''};
+    var L = dims[0], W = dims[1] || 0, H = dims[2] || 0;
+    var area, text;
+    if(dims.length===1){
+      area = L;
+      text = '按单个数值直接作为面积：' + fmt(area) + ' ㎡';
+    } else if(dims.length===2){
+      area = L*W;
+      text = '按单面面积计算：' + fmt(L) + ' × ' + fmt(W) + ' = ' + fmt(area) + ' ㎡';
+    } else {
+      if(p.shapeType==='floor'){
+        area = L*W;
+        text = '地面面积 = 长×宽 = ' + fmt(L) + ' × ' + fmt(W) + ' = ' + fmt(area) + ' ㎡';
+      } else if(p.shapeType==='box'){
+        area = 2*(L*W + L*H + W*H);
+        text = '六面体表面积 = 2×(' + fmt(L)+'×'+fmt(W)+' + '+fmt(L)+'×'+fmt(H)+' + '+fmt(W)+'×'+fmt(H)+') = ' + fmt(area) + ' ㎡';
+      } else {
+        var op = parseFloat($('openIn').value) || 0;
+        if(op<0) op = 0;
+        var wall = 2*(L+W)*H - op;
+        if(wall<=0) return {area:0, dims:dims, err:'门窗面积大于墙面面积，请检查门窗数值', text:''};
+        var top = $('ceilingChk').checked ? L*W : 0;
+        area = wall + top;
+        text = '墙面面积 = 2×(' + fmt(L)+'+'+fmt(W)+')×'+fmt(H) + (op>0 ? ' − '+fmt(op)+'(门窗)' : '') + ' = ' + fmt(wall) + ' ㎡';
+        if(top>0) text += '；天花板 = ' + fmt(L)+'×'+fmt(W)+' = ' + fmt(L*W) + ' ㎡；合计 ' + fmt(area) + ' ㎡';
+      }
+    }
+    return {area:area, dims:dims, err:null, text:text};
+  }
+
+  /* ============ 计算 ============ */
+  function calc(){
+    var box = $('resultBox'), p = cur();
+    var r = getArea();
+    var comp = $('dimComputed');
+    comp.classList.toggle('show', !r.err && !!r.text);
+    if(r.text) comp.textContent = r.text;
+    var hasH = r.dims && r.dims.length===3;
+    $('roomExtra').classList.toggle('hidden', !(p.shapeType==='room' && hasH));
+    renderIntervalTable();
+    if(r.err){
+      box.innerHTML = '<div class="empty"><span class="icon">✏️</span><span class="warn">'+esc(r.err)+'</span></div>';
+      $('copyBtn').classList.add('hidden');
+      return;
+    }
+    var area = r.area;
+    var result;
+    switch(p.calc){
+      case 'liters': result = calcLiters(p, area); break;
+      case 'wall': result = calcWall(p, area); break;
+      case 'floorsys': result = calcFloorSys(p, area); break;
+      case 'selflevel': result = calcSelfLevel(p, area); break;
+      case 'epoxyfloor': result = calcEpoxy(p, area); break;
+      default: return;
+    }
+    if(r.text) result.steps.unshift('面积计算：' + r.text);
+    renderResult(p, area, result);
+  }
+
+  function calcLiters(p, area){
+    var coats = state.coats;
+    var coatArea = area*coats;
+    var needL = coatArea / p.coveragePerL;
+    // 组合：整 L + 余量补500ml；余量>0.5L 时直接用整桶
+    var whole = Math.floor(needL + 1e-9);
+    var frac = needL - whole;
+    var main = [], alt = [];
+    if(frac > 0.5 + 1e-9){ main.push({n:ceil(needL), sizeL:1, label:p.packs[0].label}); }
+    else {
+      if(whole>0) main.push({n:whole, sizeL:1, label:p.packs[0].label});
+      if(frac > 1e-9) main.push({n:1, sizeL:0.5, label:p.packs[1].label});
+    }
+    var altN = ceil(needL/0.5);
+    alt.push({n:altN, sizeL:0.5, label:p.packs[1].label});
+    var steps = [
+      '涂刷面积：'+fmt(area)+' ㎡ × 涂刷'+coats+'遍 = '+fmt(coatArea)+' 涂刷㎡',
+      '1L可涂刷 '+fmt(p.coveragePerL)+' ㎡/遍',
+      '需漆量 = '+fmt(coatArea)+' ÷ '+fmt(p.coveragePerL)+' = '+fmt(needL)+' L',
+      '向上凑整至 '+fmt(main.reduce(function(s,b){return s+b.n*b.sizeL;},0))+' L（推荐组合）'
+    ];
+    var copyText = '【用量参考】'+p.label+'：面积'+fmt(area)+'㎡，涂刷'+coats+'遍，'
+      +'共需涂刷'+fmt(coatArea)+'㎡。建议购买：'+main.map(function(b){return b.n+'桶'+b.label;}).join(' + ')+'。';
+    return {main:main, alt:alt, steps:steps, copyText:copyText,
+            head:'共需涂刷 <b>'+fmt(coatArea)+' 涂刷㎡</b>（'+fmt(area)+'㎡ × '+coats+'遍），需漆量 '+fmt(needL)+' L（约 '+fmt(needL*1000)+' ml）'};
+  }
+
+  function calcWall(p, area){
+    var coats = state.coats;
+    var coatArea = area*coats;
+    var n = ceil(coatArea / p.coveragePerPack);
+    var main = [{n:n, sizeL:1.1, label:p.packs[0].label}];
+    var steps = [
+      '涂刷面积：'+fmt(area)+' ㎡ × 涂刷'+coats+'遍 = '+fmt(coatArea)+' 涂刷㎡',
+      '每桶1.1L可涂刷 '+p.coveragePerPack+' ㎡/遍',
+      '需桶数 = '+fmt(coatArea)+' ÷ '+p.coveragePerPack+' = '+fmt(coatArea/p.coveragePerPack)+' 桶',
+      '向上取整 → '+n+' 桶'
+    ];
+    var copyText = '【用量参考】'+p.label+'：涂刷面积'+fmt(area)+'㎡，刷'+coats+'遍，共'+fmt(coatArea)+'涂刷㎡，建议购买 '+n+' 桶 1.1L 装。';
+    return {main:main, alt:[], steps:steps, copyText:copyText,
+            head:'共需涂刷 <b>'+fmt(coatArea)+' 涂刷㎡</b>（'+fmt(area)+'㎡ × '+coats+'遍）'};
+  }
+
+  function calcFloorSys(p, area){
+    var rows = [], steps = ['地面面积：'+fmt(area)+' ㎡'], copyParts = [];
+    p.parts.forEach(function(pt){
+      var needL = area / pt.coverageJobPerL;
+      var n = ceil(needL);
+      rows.push({name:pt.name, coats:pt.coats, n:n, needL:needL, label:p.packs[0].label});
+      steps.push(pt.name+'：'+fmt(area)+'㎡ ÷ '+fmt(pt.coverageJobPerL)+'㎡/桶（'+pt.coats+'遍） = '+fmt(needL)+' 桶 → 取 '+n+' 桶');
+      copyParts.push(pt.name+' '+n+'桶');
+    });
+    var copyText = '【用量参考】地坪漆（'+fmt(area)+'㎡）：'+copyParts.join('，')+'（1L装）。施工顺序：底漆→颜色漆→清漆。';
+    return {rows:rows, steps:steps, copyText:copyText,
+            head:'地坪漆三件套 · 地面面积 <b>'+fmt(area)+' ㎡</b>'};
+  }
+
+  function calcSelfLevel(p, area){
+    var n = ceil(area / p.areaPerKg);
+    var main = [{n:n, label:p.packs[0].label}];
+    var steps = [
+      '地面面积：'+fmt(area)+' ㎡',
+      '1kg可刮涂3mm厚约 '+p.areaPerKg+' ㎡',
+      '需桶数 = '+fmt(area)+' ÷ '+p.areaPerKg+' = '+fmt(area/p.areaPerKg)+' 桶',
+      '向上取整 → '+n+' 桶'
+    ];
+    var copyText = '【用量参考】环氧自流平地坪漆：地面'+fmt(area)+'㎡，刮涂约3mm厚，建议购买 '+n+' 桶 1kg套装（800g主剂+200g固化剂）。';
+    return {main:main, alt:[], steps:steps, copyText:copyText,
+            head:'地面面积 <b>'+fmt(area)+' ㎡</b> · 刮涂1遍（约3mm厚）'};
+  }
+
+  function calcEpoxy(p, area){
+    var totalKg = area * p.kgPerCoatSqm * state.coats;
+    var large = Math.floor(totalKg/3 + 1e-9);
+    var rem = totalKg - large*3;
+    var small = rem>0 ? ceil(rem/0.8) : 0;
+    var main = [];
+    if(large>0) main.push({n:large, label:p.packs[0].label});
+    if(small>0) main.push({n:small, label:p.packs[1].label});
+    var altSmall = ceil(totalKg/0.8);
+    var steps = [
+      '地面面积：'+fmt(area)+' ㎡ × 2遍 × 0.1kg/㎡/遍 = 需漆 '+fmt(totalKg)+' kg（含固化剂）',
+      '大套装3kg可刷15㎡/2遍，小套装0.8kg可刷4㎡/2遍',
+      '推荐组合：'+main.map(function(b){return b.n+'套'+b.label;}).join(' + ')
+    ];
+    var copyText = '【用量参考】环氧地坪漆：地面'+fmt(area)+'㎡，刷2遍，约需'+fmt(totalKg)+'kg。建议购买：'+main.map(function(b){return b.n+'套'+b.label;}).join(' + ')+'。';
+    return {main:main, alt:[{n:altSmall, label:p.packs[1].label}], steps:steps, copyText:copyText,
+            head:'地面面积 <b>'+fmt(area)+' ㎡</b> · 刷2遍 · 约需 <b>'+fmt(totalKg)+' kg</b>（含固化剂）'};
+  }
+
+  /* ============ 用量区间对照表（随产品/颜色/遍数联动） ============ */
+  function shortLabel(label){
+    return String(label).replace(/（[^）]*）/g, '');
+  }
+  function buyStr(main){
+    if(!main || !main.length) return '—';
+    return main.map(function(b){ return b.n+'桶'+shortLabel(b.label); }).join(' + ');
+  }
+  function renderIntervalTable(){
+    var p = cur(), coats = state.coats;
+    var coatsTxt = (p.calc==='floorsys') ? '底漆1遍·颜色漆2遍·清漆1遍' : (coats + '遍');
+    $('intervalTitle').textContent = '当前：' + p.label
+      + (p.colorDepth ? ' · ' + (state.color==='light'?'浅色':'深色') : '')
+      + ' · ' + coatsTxt;
+    var r0 = getArea();
+    var curArea = r0.err ? 0 : r0.area;
+    var steps = [5,10,15,20,25,30,35,40,45,50,60,70,80,90,100];
+    if(curArea > 100) steps.push(Math.ceil(curArea/5)*5);
+    var ceil5 = curArea>0 ? Math.ceil(curArea/5)*5 : 0;
+    var isFloorSys = (p.calc==='floorsys');
+    var html = '<div class="table-wrap"><table class="interval-table"><thead><tr>';
+    if(isFloorSys){
+      html += '<th>面积（㎡）</th><th>封闭底漆(1遍)</th><th>颜色漆(2遍)</th><th>罩光清漆(1遍)</th>';
+    } else {
+      html += '<th>面积（㎡）</th><th>涂刷㎡（×'+coatsTxt+'）</th><th>对应用量</th><th>建议购买</th>';
+    }
+    html += '</tr></thead><tbody>';
+    steps.forEach(function(a){
+      var m = (curArea>0 && a===ceil5);
+      if(isFloorSys){
+        var rr = calcFloorSys(p, a);
+        html += '<tr'+(m?' class="matched"':'')+'><td>'+(m?'◀ ':'')+a+'</td>';
+        rr.rows.forEach(function(x){
+          html += '<td>'+x.n+'桶·'+shortLabel(x.label)+'</td>';
+        });
+        html += '</tr>';
+      } else {
+        var need, buy, coatTxt;
+        if(p.calc==='liters'){
+          var r1 = calcLiters(p, a);
+          need = fmt(a*coats*1000/p.coveragePerL) + ' ml';
+          buy = buyStr(r1.main);
+          coatTxt = fmt(a*coats);
+        } else if(p.calc==='wall'){
+          var r2 = calcWall(p, a);
+          need = fmt(a*coats*110) + ' ml';
+          buy = buyStr(r2.main);
+          coatTxt = fmt(a*coats);
+        } else if(p.calc==='selflevel'){
+          var r3 = calcSelfLevel(p, a);
+          need = fmt(r3.main[0].n) + ' kg';
+          buy = buyStr(r3.main);
+          coatTxt = '—';
+        } else {
+          var r4 = calcEpoxy(p, a);
+          need = fmt(a*0.2) + ' kg';
+          buy = buyStr(r4.main);
+          coatTxt = fmt(a*coats);
+        }
+        html += '<tr'+(m?' class="matched"':'')+'><td>'+(m?'◀ ':'')+a+'</td><td>'+coatTxt+'</td><td>'+need+'</td><td>'+buy+'</td></tr>';
+      }
+    });
+    html += '</tbody></table></div>';
+    html += '<div class="note-extra">已按当前产品、遍数与覆盖率计算并向上取整；◀ 为你输入的尺寸所对应的区间档位。</div>';
+    $('intervalBox').innerHTML = html;
+  }
+
+  /* ============ 渲染结果 ============ */
+  function renderResult(p, area, r){
+    var html = '';
+    html += '<div class="rs-total">'+r.head+'</div>';
+    html += '<div class="rs-line">📊 已自动对应速查区间：'+fmt(Math.ceil(area/5)*5)+' ㎡ 档（对照表已高亮 ◀）</div>';
+    if(r.main && r.main.length){
+      html += '<div class="buckets">';
+      r.main.forEach(function(b){
+        html += '<div class="bucket main">'
+          + '<div><div class="b-num">'+b.n+' <small>桶</small></div></div>'
+          + '<div class="b-name">'+esc(b.label)+'</div></div>';
+      });
+      html += '</div>';
+    }
+    if(r.rows && r.rows.length){
+      html += '<div class="buckets">';
+      r.rows.forEach(function(b){
+        html += '<div class="bucket"><div><div class="b-num">'+b.n+' <small>桶</small></div></div>'
+          + '<div class="b-name">'+esc(b.name)+'<br><span style="font-size:12px;color:var(--sub)">'+esc(b.label)+' · '+b.coats+'遍</span></div></div>';
+      });
+      html += '</div>';
+    }
+    if(r.alt && r.alt.length){
+      html += '<div class="sec-title">备选方案（全部小规格）</div><div class="buckets">';
+      r.alt.forEach(function(b){
+        html += '<div class="bucket alt"><div><div class="b-num">'+b.n+' <small>桶</small></div></div>'
+          + '<div class="b-name">'+esc(b.label)+'</div></div>';
+      });
+      html += '</div>';
+    }
+    html += '<div class="sec-title">计算过程</div><ol class="steps">';
+    r.steps.forEach(function(s){ html += '<li>'+esc(s)+'</li>'; });
+    html += '</ol>';
+    html += '<div class="sec-title">施工建议</div><ul class="tips">';
+    p.tips.forEach(function(t){ html += '<li>'+esc(t)+'</li>'; });
+    html += '<li style="color:var(--orange)">以上为理论用量，建议按实际施工情况预留约10%损耗。</li>';
+    html += '</ul>';
+    box.innerHTML = html;
+    $('copyBtn').classList.remove('hidden');
+    $('copyBtn').onclick = function(){
+      var txt = r.copyText + '（以上为理论用量，建议预留约10%损耗）';
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(ok, ok);
+      } else { ok(); }
+      function ok(){
+        $('copyBtn').textContent = '✅ 已复制，可直接发给客户';
+        setTimeout(function(){ $('copyBtn').textContent = '📋 复制用量建议（可直接发给客户）'; }, 2000);
+      }
+    };
+  }
+
+  /* ============ 事件绑定 ============ */
+  buildSelect();
+  bindPills('colorPills','color',function(v){ state.color=v; state.coatsTouched=false; renderAll(); });
+  $('coatsNum').addEventListener('input',function(){
+    var v = parseInt($('coatsNum').value,10);
+    if(v>=1 && v<=6){ state.coats=v; state.coatsTouched=true; }
+    calc();
+  });
+  ['dimsIn','openIn'].forEach(function(id){
+    $(id).addEventListener('input', calc);
+  });
+  $('ceilingChk').addEventListener('change', calc);
+  renderAll();
+})();
+</script>
+</body>
+</html>
