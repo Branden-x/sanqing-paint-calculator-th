@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sanqing Paint · เครื่องคำนวณปริมาณสี</title>
+<style>
+  :root{
+    --teal:#0b6e5c; --teal-d:#094f43; --teal-bg:#e8f3ef;
+    --orange:#e8833a; --orange-bg:#fdf1e7;
+    --ink:#22312d; --sub:#5f726d; --line:#dde8e3;
+    --card:#ffffff; --bg:#f2f7f5; --danger:#c0392b;
+    --radius:16px;
+    --shadow:0 6px 24px rgba(11,110,92,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Sarabun","Noto Sans Thai","Prompt","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.6;
+  }
+  .hero{
+    background:linear-gradient(135deg,var(--teal) 0%,var(--teal-d) 100%);
+    color:#fff; padding:34px 20px 30px; text-align:center;
+  }
+  .hero h1{font-size:24px;letter-spacing:.5px}
+  .hero p{margin-top:8px;font-size:14px;opacity:.85}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 16px 40px}
+  .grid{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;align-items:start}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:22px 24px;border:1px solid var(--line)}
+  .card h2{font-size:17px;display:flex;align-items:center;gap:8px;margin-bottom:16px}
+  .card h2 .num{display:inline-flex;width:22px;height:22px;border-radius:50%;
+    background:var(--teal);color:#fff;font-size:13px;align-items:center;justify-content:center;flex:none}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:14px;font-weight:600;margin-bottom:6px}
+  .field .hint{font-weight:400;color:var(--sub);font-size:12px;margin-left:6px}
+  select,input[type=number],input[type=text]{
+    width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;
+    font-size:15px;color:var(--ink);background:#fbfdfc;outline:none;transition:border-color .15s;
+  }
+  select:focus,input:focus{border-color:var(--teal)}
+  .pills{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{border:1.5px solid var(--line);border-radius:999px;padding:7px 16px;font-size:14px;
+    cursor:pointer;background:#fff;color:var(--sub);user-select:none;transition:all .15s}
+  .pill.active{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600}
+  .pill:not(.active):hover{border-color:var(--teal);color:var(--teal)}
+  .row2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .computed{font-size:13px;color:var(--teal);background:var(--teal-bg);border-radius:8px;
+    padding:6px 10px;margin-top:8px;display:none}
+  .computed.show{display:block}
+  .chk{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+  .chk input{width:16px;height:16px;accent-color:var(--teal)}
+  .note-extra{font-size:12px;color:var(--sub);margin-top:12px;padding:10px 12px;
+    background:var(--bg);border-radius:10px}
+  /* ผลลัพธ์ */
+  .result{position:sticky;top:16px}
+  @media(max-width:880px){.result{position:static}}
+  .empty{color:var(--sub);text-align:center;padding:34px 10px;font-size:14px}
+  .empty .icon{font-size:34px;display:block;margin-bottom:10px}
+  .rs-line{font-size:13px;color:var(--sub);margin-bottom:6px}
+  .rs-total{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:14px}
+  .rs-total b{color:var(--teal);font-size:17px}
+  .buckets{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+  .bucket{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--teal-bg);border:1px solid #cfe5dc;border-radius:12px;padding:12px 16px}
+  .bucket .b-num{font-size:26px;font-weight:800;color:var(--teal);line-height:1}
+  .bucket .b-num small{font-size:13px;font-weight:600}
+  .bucket .b-name{font-size:14px;color:var(--ink);text-align:right}
+  .bucket.alt{background:var(--orange-bg);border-color:#f4d9c2}
+  .bucket.alt .b-num{color:var(--orange)}
+  .bucket.main{border-width:2px;box-shadow:0 2px 10px rgba(11,110,92,.10)}
+  .sec-title{font-size:13px;font-weight:700;color:var(--sub);margin:14px 0 8px;
+    padding-bottom:4px;border-bottom:1px dashed var(--line)}
+  .steps{font-size:13px;color:var(--sub);background:var(--bg);border-radius:10px;
+    padding:10px 14px;list-style:none}
+  .steps li{padding:3px 0;border-bottom:1px dashed #e6eee9}
+  .steps li:last-child{border-bottom:none;color:var(--teal);font-weight:600}
+  .tips{font-size:13px;color:var(--sub);padding-left:18px}
+  .tips li{margin:3px 0}
+  .warn{color:var(--danger);font-size:13px;font-weight:600}
+  .copy-btn{margin-top:14px;width:100%;background:var(--teal);color:#fff;border:none;
+    border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer}
+  .copy-btn:hover{background:var(--teal-d)}
+  /* ตาราง */
+  .table-card{margin-top:20px}
+  .table-card summary{cursor:pointer;font-size:17px;font-weight:700;color:var(--ink);padding:4px 0}
+  .table-card summary:hover{color:var(--teal)}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--teal-bg);color:var(--teal-d);font-weight:700;white-space:nowrap}
+  tr:nth-child(even) td{background:#fafcfb}
+  .table-wrap{overflow-x:auto}
+  .interval-table{margin-top:0}
+  .interval-table th,.interval-table td{white-space:nowrap}
+  .interval-table tr.matched td{background:var(--orange-bg)!important;font-weight:700;color:var(--teal-d)}
+  .interval-card h2 .hint{font-weight:400;color:var(--sub);font-size:12px;margin-left:6px}
+  footer{text-align:center;color:var(--sub);font-size:12px;padding:8px 16px 30px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Sanqing Paint · เครื่องคำนวณปริมาณสี</h1>
+  <p>เลือกสินค้า → กรอกขนาด (เช่น 3x3x2.8) → รับปริมาณที่แนะนำทันที</p>
+</header>
+
+<main class="wrap">
+  <section class="grid">
+
+    <!-- ซ้าย: กรอกข้อมูล -->
+    <div class="card">
+      <h2><span class="num">1</span>กรอกข้อมูลหน้างาน</h2>
+
+      <div class="field">
+        <label>เลือกสินค้า</label>
+        <select id="productSel"></select>
+      </div>
+
+      <div class="field" id="colorField">
+        <label>สีเป้าหมาย <span class="hint">สีอ่อนทับสีเข้มต้องทาหลายรอบ</span></label>
+        <div class="pills" id="colorPills">
+          <span class="pill active" data-v="light">สีอ่อน</span>
+          <span class="pill" data-v="dark">สีเข้ม</span>
+        </div>
+      </div>
+
+      <div class="field" id="coatsField">
+        <label>จำนวนรอบที่ทา <span class="hint" id="coatsHint"></span></label>
+        <input type="number" id="coatsNum" min="1" max="6" step="1" value="4">
+      </div>
+
+      <div class="field">
+        <label>ขนาด (เมตร) <span class="hint">พิมพ์ได้เลย เช่น 3x3 หรือ 3x3x2.8 (ใช้ x, ×, * หรือเว้นวรรคก็ได้)</span></label>
+        <input type="text" id="dimsIn" placeholder="เช่น 3x3 หรือ 3x3x2.8">
+      </div>
+
+      <div class="row2 hidden" id="roomExtra">
+        <div class="field"><label>พื้นที่ประตู-หน้าต่าง (ตร.ม., ไม่บังคับ) <span class="hint">หักออกจากผนัง</span></label>
+          <input type="number" id="openIn" min="0" step="0.1" value="0"></div>
+        <div class="field"><label>&nbsp;</label>
+          <label class="chk"><input type="checkbox" id="ceilingChk"> ทาฝ้าเพดานด้วย</label></div>
+      </div>
+
+      <div class="computed" id="dimComputed"></div>
+      <div class="note-extra" id="dimNote"></div>
+      <div class="note-extra" id="selectNote">สินค้าบางประเภท (สีกระจก, สีทอง, ปากกาอุดรอยยาแนว, สีสเปรย์ ฯลฯ) ยังไม่มีข้อมูลอัตราครอบคลุม เครื่องมือนี้ครอบคลุมเฉพาะสินค้าที่มีข้อมูลอย่างเป็นทางการเท่านั้น</div>
+    </div>
+
+    <!-- ขวา: ผลลัพธ์ -->
+    <div class="card result">
+      <h2><span class="num">2</span>ปริมาณที่แนะนำ</h2>
+      <div id="resultBox">
+        <div class="empty"><span class="icon">🪣</span>กรอกข้อมูลด้านซ้าย แล้วระบบจะคำนวณ<br>ปริมาณที่แนะนำให้ทันที</div>
+      </div>
+      <button class="copy-btn hidden" id="copyBtn">📋 คัดลอกข้อความแนะนำ (ส่งให้ลูกค้าได้เลย)</button>
+    </div>
+
+  </section>
+
+  <!-- ตารางเทียบช่วงพื้นที่ -->
+  <div class="card table-card interval-card">
+    <h2><span class="num">3</span>ตารางเทียบช่วงพื้นที่ <span class="hint" id="intervalTitle"></span></h2>
+    <div id="intervalBox"></div>
+  </div>
+
+  <!-- ตารางอ้างอิง -->
+  <details class="card table-card" open>
+    <summary>📋 ตารางอ้างอิงปริมาณการใช้แต่ละสินค้า</summary>
+    <table>
+      <thead>
+        <tr><th>ประเภทสินค้า</th><th>กรณีใช้งาน</th><th>รอบที่แนะนำ</th><th>อัตราครอบคลุม</th><th>ปริมาณต่อรอบ</th><th>ขนาดบรรจุ</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>สีทาไม้ / สีทาโลหะ / สีทาพีวีซี</td><td>ทาสีอ่อน</td><td>3-4 รอบ (คิด 4 รอบ)</td><td>1L ≈ 10 ตร.ม./รอบ</td><td>100ml/ตร.ม./รอบ</td><td>500ml / 1000ml (≈1kg)</td></tr>
+        <tr><td>สีทาไม้ / สีทาโลหะ / สีทาพีวีซี</td><td>ทาสีเข้ม</td><td>2 รอบ</td><td>1L ≈ 10 ตร.ม./รอบ</td><td>100ml/ตร.ม./รอบ</td><td>500ml / 1000ml (≈1kg)</td></tr>
+        <tr><td>น้ำมันแว็กซ์ไม้ / สีลายไม้</td><td>ทุกสี</td><td>2 รอบ</td><td>1kg ≈ 10 ตร.ม./รอบ</td><td>100g/ตร.ม./รอบ</td><td>500g (500ml) / 1000g (1000ml)</td></tr>
+        <tr><td>น้ำยาปรับสภาพกระเบื้อง</td><td>รองพื้นกระเบื้อง (จำเป็น)</td><td>2 รอบ</td><td>1000ml ≈ 10 ตร.ม./2 รอบ</td><td>50ml/ตร.ม./รอบ</td><td>500ml / 1000ml</td></tr>
+        <tr><td>สีทากระเบื้อง</td><td>ทาสีอ่อน</td><td>3-4 รอบ (คิด 4 รอบ)</td><td>1L ≈ 10 ตร.ม./รอบ</td><td>100ml/ตร.ม./รอบ</td><td>500ml / 1000ml (≈1kg)</td></tr>
+        <tr><td>สีทากระเบื้อง</td><td>ทาสีเข้ม</td><td>2 รอบ</td><td>1L ≈ 10 ตร.ม./รอบ</td><td>100ml/ตร.ม./รอบ</td><td>500ml / 1000ml (≈1kg)</td></tr>
+        <tr><td>สีรองพื้น (สีทาพื้น)</td><td>รองพื้น</td><td>1 รอบ</td><td>1L ≈ 10 ตร.ม./รอบ</td><td>100ml/ตร.ม./รอบ</td><td>1000ml (≈1kg)</td></tr>
+        <tr><td>สีทาพื้น</td><td>สีจริง</td><td>2 รอบ</td><td>1L ≈ 5 ตร.ม./2 รอบ</td><td>100ml/ตร.ม./รอบ</td><td>1000ml (≈1kg)</td></tr>
+        <tr><td>เคลือบใส (สีทาพื้น)</td><td>เคลือบเงา</td><td>1 รอบ</td><td>1L ≈ 10 ตร.ม./รอบ</td><td>100ml/ตร.ม./รอบ</td><td>1000ml (≈1kg)</td></tr>
+        <tr><td>สีทาผนัง</td><td>ทุกสี</td><td>2 รอบ</td><td>1.1L ≈ 10 ตร.ม./รอบ</td><td>110ml/ตร.ม./รอบ</td><td>1.1L</td></tr>
+        <tr><td>สีอีพ็อกซี่เทพื้นปรับระดับ</td><td>ทุกสี</td><td>1 รอบ</td><td>1kg ≈ 3 ตร.ม. (หนา 3mm)</td><td>≈333g/ตร.ม.</td><td>ชุด 1kg (800g + 200g ตัวทำแข็ง)</td></tr>
+        <tr><td>สีอีพ็อกซี่พื้น</td><td>ทุกสี</td><td>2 รอบ</td><td>0.8kg ≈ 8 ตร.ม./รอบ; 3kg ≈ 30 ตร.ม./รอบ</td><td>100g/ตร.ม./รอบ</td><td>ชุด 0.4kg+0.4kg / 1.5kg+1.5kg</td></tr>
+      </tbody>
+    </table>
+  </details>
+</main>
+
+<footer>เครื่องคำนวณปริมาณสี Sanqing Paint · 2026-09-28 · ตัวเลขเป็นค่าทางทฤษฎี โปรดเผื่อความสูญเสียตามหน้างานจริง</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ ข้อมูลสินค้า (อัตราครอบคลุม) ============ */
+  var PRODUCTS = [
+    {
+      id:'wood', label:'สีทาไม้ / สีทาโลหะ / สีทาพีวีซี', group:'เฟอร์นิเจอร์และประตูหน้าต่าง',
+      colorDepth:true, coatsDefault:{light:4, dark:2},
+      coatsHint:'สีอ่อนแนะนำ 3-4 รอบ สีเข้ม 2 รอบ',
+      calc:'liters', coveragePerL:10,
+      packs:[{sizeL:1,label:'1000ml (≈1kg)'},{sizeL:0.5,label:'500ml (≈500g)'}],
+      shapeType:'box',
+      tips:['สีอ่อนแนะนำทา 3-4 รอบ สีเข้ม 2 รอบ (สีเข้มปกปิดดีกว่า)',
+            'วิธีทา: เปิดฝาคนให้เข้ากัน → ทาเป็นชั้นบางๆ → รอแห้ง',
+            'ตู้/เฟอร์นิเจอร์ใส่ ยาวxกว้างxสูง (คิดพื้นที่ผิว 6 ด้าน); ทาเฉพาะหน้าเดียวใส่ 2 ค่า (เช่น 3x2)',
+            'แนะนำเผื่อความสูญเสียประมาณ 10%']
+    },
+    {
+      id:'waxoil', label:'น้ำมันแว็กซ์ไม้ / สีลายไม้', group:'เฟอร์นิเจอร์และประตูหน้าต่าง',
+      colorDepth:false, coatsDefault:2, coatsHint:'ทุกสี แนะนำ 2 รอบ',
+      calc:'liters', coveragePerL:10,
+      packs:[{sizeL:1,label:'1000ml (≈1000g)'},{sizeL:0.5,label:'500ml (≈500g)'}],
+      shapeType:'box',
+      tips:['ทาได้ทุกสี แนะนำ 2 รอบ',
+            '500g ทาได้ ≈5 ตร.ม./รอบ, 1kg ≈10 ตร.ม./รอบ',
+            'เฟอร์นิเจอร์ใส่ ยาวxกว้างxสูง คิดพื้นที่ผิว 6 ด้าน; ด้านเดียวใส่ 2 ค่า (เช่น 3x2)',
+            'แนะนำเผื่อความสูญเสียประมาณ 10%']
+    },
+    {
+      id:'tileprimer', label:'น้ำยาปรับสภาพกระเบื้อง', group:'กระเบื้อง',
+      colorDepth:false, coatsDefault:2, coatsLocked:true,
+      coatsHint:'ต้องทา 2 รอบ',
+      calc:'liters', coveragePerL:20,
+      packs:[{sizeL:1,label:'1000ml'},{sizeL:0.5,label:'500ml'}],
+      shapeType:'room',
+      tips:['ต้องทา 2 รอบ เพื่อให้ติดแน่นและเรียบเนียน',
+            '1000ml ทาได้ ≈10 ตร.ม./2 รอบ, 500ml ≈5 ตร.ม./2 รอบ',
+            'รอแห้งก่อนทาสีทากระเบื้องทับ',
+            'ทาเฉพาะพื้นใส่แค่ 2 ค่า (เช่น 3x3)']
+    },
+    {
+      id:'tilepaint', label:'สีทากระเบื้อง', group:'กระเบื้อง',
+      colorDepth:true, coatsDefault:{light:4, dark:2},
+      coatsHint:'สีอ่อนแนะนำ 3-4 รอบ สีเข้ม 2 รอบ',
+      calc:'liters', coveragePerL:10,
+      packs:[{sizeL:1,label:'1000ml'},{sizeL:0.5,label:'500ml'}],
+      shapeType:'room',
+      tips:['สีอ่อนแนะนำทา 4 รอบ สีเข้ม 2 รอบ',
+            'ต้องทาคู่กับน้ำยาปรับสภาพกระเบื้องเพื่อการยึดเกาะ',
+            'ผสมตัวทำแข็งตามอัตราส่วนบนฉลากสินค้า',
+            'ทาเฉพาะพื้นใส่ 2 ค่า (เช่น 3x3); ทาผนังด้านเดียวใส่ 2 ค่า (เช่น 3x2.8)']
+    },
+    {
+      id:'floorsys', label:'สีทาพื้น (รองพื้น + สีจริง + เคลือบใส)', group:'พื้น',
+      colorDepth:false, coatsLocked:true,
+      coatsHint:'รองพื้น 1 รอบ · สีจริง 2 รอบ · เคลือบใส 1 รอบ',
+      calc:'floorsys',
+      parts:[
+        {name:'สีรองพื้น', coats:1, coverageJobPerL:10},
+        {name:'สีทาพื้น', coats:2, coverageJobPerL:5},
+        {name:'เคลือบใส', coats:1, coverageJobPerL:10}
+      ],
+      packs:[{sizeL:1,label:'1000ml (≈1kg)'}],
+      shapeType:'floor',
+      tips:['ลำดับการทา: สีรองพื้น → สีทาพื้น → เคลือบใส',
+            'สีทาพื้นแนะนำ 2 รอบ, 1L ทาได้ ≈5 ตร.ม./2 รอบ',
+            'แนะนำเผื่อความสูญเสียประมาณ 10%']
+    },
+    {
+      id:'wall', label:'สีทาผนัง', group:'ผนัง',
+      colorDepth:false, coatsDefault:2, coatsHint:'ทุกสี แนะนำ 2 รอบ',
+      calc:'wall', coveragePerPack:10,
+      packs:[{label:'1.1L (≈1.1kg)'}],
+      shapeType:'room',
+      tips:['1.1L ทาได้ ≈10 ตร.ม./1 รอบ แนะนำ 2 รอบ',
+            'ทาผนังด้านเดียวใส่ 2 ค่า (เช่น 3x2.8) เพื่อคิดพื้นที่ด้านเดียว',
+            'ประมาณเร็ว: ผนังอย่างเดียว ≈ พื้นที่ห้อง×2; ผนัง+ฝ้าเพดาน ≈ ×3',
+            'ผนังที่มีหลุม/ร่วน ให้อุดรอยก่อนทาสี']
+    },
+    {
+      id:'selflevel', label:'สีอีพ็อกซี่เทพื้นปรับระดับ', group:'พื้น',
+      colorDepth:false, coatsLocked:true, coatsDefault:1,
+      coatsHint:'เท 1 รอบ (หนาประมาณ 3mm)',
+      calc:'selflevel', areaPerKg:3,
+      packs:[{label:'ชุด 1kg (800g + 200g ตัวทำแข็ง)'}],
+      shapeType:'floor',
+      tips:['1kg เทได้หนา 3mm ประมาณ 3 ตร.ม.',
+            'ขัดและทำความสะอาดพื้นให้แห้ง ไม่มีคราบน้ำมันก่อนเท']
+    },
+    {
+      id:'epoxyfloor', label:'สีอีพ็อกซี่พื้น', group:'พื้น',
+      colorDepth:false, coatsLocked:true, coatsDefault:2,
+      coatsHint:'ทุกสี แนะนำ 2 รอบ',
+      calc:'epoxyfloor', kgPerCoatSqm:0.1,
+      packs:[
+        {label:'ชุดใหญ่ (1.5kg + 1.5kg ตัวทำแข็ง)', kg:3, coversJob:15},
+        {label:'ชุดเล็ก (0.4kg + 0.4kg ตัวทำแข็ง)', kg:0.8, coversJob:4}
+      ],
+      shapeType:'floor',
+      tips:['ชุดเล็ก 0.4+0.4kg ทาได้ ≈8 ตร.ม./รอบ; ชุดใหญ่ 1.5+1.5kg ≈30 ตร.ม./รอบ',
+            'แนะนำทา 2 รอบ ≈0.2kg/ตร.ม.',
+            'แนะนำเผื่อความสูญเสียประมาณ 10%']
+    }
+  ];
+
+  var GROUPS = ['เฟอร์นิเจอร์และประตูหน้าต่าง','กระเบื้อง','พื้น','ผนัง'];
+
+  /* ============ ฟังก์ชันช่วย ============ */
+  function $(id){ return document.getElementById(id); }
+  function fmt(n){
+    if(!isFinite(n)) return '—';
+    return String(Math.round(n*100)/100);
+  }
+  function ceil(n){ return Math.ceil(n - 1e-9); }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  /* ============ สถานะ ============ */
+  var state = {
+    productId:'wood', color:'light', coats:4, coatsTouched:false
+  };
+
+  /* ============ สร้างเมนูสินค้า ============ */
+  function buildSelect(){
+    var sel = $('productSel'), html = '';
+    GROUPS.forEach(function(g){
+      var items = PRODUCTS.filter(function(p){ return p.group===g; });
+      if(!items.length) return;
+      html += '<optgroup label="'+esc(g)+'">';
+      items.forEach(function(p){ html += '<option value="'+p.id+'">'+esc(p.label)+'</option>'; });
+      html += '</optgroup>';
+    });
+    sel.innerHTML = html;
+    sel.value = state.productId;
+    sel.addEventListener('change', function(){
+      state.productId = sel.value;
+      state.coatsTouched = false;
+      var p = cur();
+      state.color = p.colorDepth ? 'light' : state.color;
+      renderAll();
+    });
+  }
+
+  function cur(){
+    for(var i=0;i<PRODUCTS.length;i++) if(PRODUCTS[i].id===state.productId) return PRODUCTS[i];
+    return PRODUCTS[0];
+  }
+
+  function suggestedCoats(p){
+    if(p.coatsLocked) return p.coatsDefault;
+    if(p.colorDepth) return p.coatsDefault[state.color];
+    return p.coatsDefault;
+  }
+
+  function bindPills(groupId, key, onPick){
+    var el = $(groupId);
+    el.addEventListener('click', function(e){
+      var t = e.target.closest('.pill'); if(!t) return;
+      el.querySelectorAll('.pill').forEach(function(x){ x.classList.remove('active'); });
+      t.classList.add('active');
+      onPick(t.getAttribute('data-v'));
+    });
+  }
+
+  function renderAll(){
+    var p = cur();
+
+    // สีเป้าหมาย
+    $('colorField').classList.toggle('hidden', !p.colorDepth);
+    // จำนวนรอบ
+    $('coatsField').classList.toggle('hidden', !!p.coatsLocked);
+    if(!p.coatsLocked){
+      $('coatsHint').textContent = p.coatsHint || '';
+      if(!state.coatsTouched){ state.coats = suggestedCoats(p); }
+    } else { state.coats = suggestedCoats(p); }
+    $('coatsNum').value = state.coats;
+
+    // คำอธิบายวิธีกรอกขนาด
+    var noteMap = {
+      room: 'ใส่ ยาวxกว้างxสูง (เช่น 4x3x2.8) = พื้นที่ผนัง 2×(ยาว+กว้าง)×สูง (หักประตู-หน้าต่างได้, เพิ่มฝ้าเพดานได้)',
+      box: 'ใส่ ยาวxกว้างxสูง (เช่น 2x1.5x0.5) = พื้นที่ผิว 6 ด้าน 2×(ยาว×กว้าง+ยาว×สูง+กว้าง×สูง) (ตู้, เฟอร์นิเจอร์)',
+      floor: 'ใส่ ยาวxกว้างxสูง = คิดพื้นที่พื้น ยาว×กว้าง (ละเว้นความสูง)'
+    };
+    $('dimNote').textContent = noteMap[p.shapeType]
+      + '; ใส่ 1 ค่า = พื้นที่โดยตรง, 2 ค่า = พื้นที่ด้านเดียว (เช่น 3x3) ใช้ x, ×, * หรือเว้นวรรคก็ได้';
+
+    calc();
+  }
+
+  /* ============ แปลงขนาด: รองรับ 3x3, 3×3, 3*3, 3 3, 3x3x2.8 ============ */
+  function parseDims(raw){
+    var s = String(raw || '').replace(/เมตร|ตร\.ม\.|ตรม\.|m2|m²|m/gi, '');
+    var parts = s.split(/[x×X*·，,、\s]+/).map(function(t){
+      var x = parseFloat(t);
+      return (isFinite(x) && x>0) ? x : 0;
+    });
+    return parts.filter(function(x){ return x>0; });
+  }
+
+  /* ============ คำนวณพื้นที่ (ข้ามค่าว่าง/0 อัตโนมัติ) ============ */
+  function getArea(){
+    var p = cur();
+    var dims = parseDims($('dimsIn').value);
+    if(!dims.length) return {area:0, dims:dims, err:'กรุณากรอกขนาด เช่น 3x3 หรือ 3x3x2.8', text:''};
+    if(dims.length>3) return {area:0, dims:dims, err:'กรอกได้สูงสุด 3 ค่า (ยาวxกว้างxสูง)', text:''};
+    var L = dims[0], W = dims[1] || 0, H = dims[2] || 0;
+    var area, text;
+    if(dims.length===1){
+      area = L;
+      text = 'ใช้ตัวเลขเดียวเป็นพื้นที่โดยตรง: ' + fmt(area) + ' ตร.ม.';
+    } else if(dims.length===2){
+      area = L*W;
+      text = 'คิดพื้นที่ด้านเดียว: ' + fmt(L) + ' × ' + fmt(W) + ' = ' + fmt(area) + ' ตร.ม.';
+    } else {
+      if(p.shapeType==='floor'){
+        area = L*W;
+        text = 'พื้นที่พื้น = ยาว×กว้าง = ' + fmt(L) + ' × ' + fmt(W) + ' = ' + fmt(area) + ' ตร.ม.';
+      } else if(p.shapeType==='box'){
+        area = 2*(L*W + L*H + W*H);
+        text = 'พื้นที่ผิว 6 ด้าน = 2×(' + fmt(L)+'×'+fmt(W)+' + '+fmt(L)+'×'+fmt(H)+' + '+fmt(W)+'×'+fmt(H)+') = ' + fmt(area) + ' ตร.ม.';
+      } else {
+        var op = parseFloat($('openIn').value) || 0;
+        if(op<0) op = 0;
+        var wall = 2*(L+W)*H - op;
+        if(wall<=0) return {area:0, dims:dims, err:'พื้นที่ประตู-หน้าต่างมากกว่าพื้นที่ผนัง กรุณาตรวจสอบ', text:''};
+        var top = $('ceilingChk').checked ? L*W : 0;
+        area = wall + top;
+        text = 'พื้นที่ผนัง = 2×(' + fmt(L)+'+'+fmt(W)+')×'+fmt(H) + (op>0 ? ' − '+fmt(op)+'(ประตู-หน้าต่าง)' : '') + ' = ' + fmt(wall) + ' ตร.ม.';
+        if(top>0) text += '; ฝ้าเพดาน = ' + fmt(L)+'×'+fmt(W)+' = ' + fmt(L*W) + ' ตร.ม.; รวม ' + fmt(area) + ' ตร.ม.';
+      }
+    }
+    return {area:area, dims:dims, err:null, text:text};
+  }
+
+  /* ============ คำนวณ ============ */
+  function calc(){
+    var box = $('resultBox'), p = cur();
+    var r = getArea();
+    var comp = $('dimComputed');
+    comp.classList.toggle('show', !r.err && !!r.text);
+    if(r.text) comp.textContent = r.text;
+    var hasH = r.dims && r.dims.length===3;
+    $('roomExtra').classList.toggle('hidden', !(p.shapeType==='room' && hasH));
+    renderIntervalTable();
+    if(r.err){
+      box.innerHTML = '<div class="empty"><span class="icon">✏️</span><span class="warn">'+esc(r.err)+'</span></div>';
+      $('copyBtn').classList.add('hidden');
+      return;
+    }
+    var area = r.area;
+    var result;
+    switch(p.calc){
+      case 'liters': result = calcLiters(p, area); break;
+      case 'wall': result = calcWall(p, area); break;
+      case 'floorsys': result = calcFloorSys(p, area); break;
+      case 'selflevel': result = calcSelfLevel(p, area); break;
+      case 'epoxyfloor': result = calcEpoxy(p, area); break;
+      default: return;
+    }
+    if(r.text) result.steps.unshift('คำนวณพื้นที่: ' + r.text);
+    renderResult(p, area, result);
+  }
+
+  function calcLiters(p, area){
+    var coats = state.coats;
+    var coatArea = area*coats;
+    var needL = coatArea / p.coveragePerL;
+    var whole = Math.floor(needL + 1e-9);
+    var frac = needL - whole;
+    var main = [], alt = [];
+    if(frac > 0.5 + 1e-9){ main.push({n:ceil(needL), sizeL:1, label:p.packs[0].label}); }
+    else {
+      if(whole>0) main.push({n:whole, sizeL:1, label:p.packs[0].label});
+      if(frac > 1e-9) main.push({n:1, sizeL:0.5, label:p.packs[1].label});
+    }
+    var altN = ceil(needL/0.5);
+    alt.push({n:altN, sizeL:0.5, label:p.packs[1].label});
+    var steps = [
+      'พื้นที่ทา: '+fmt(area)+' ตร.ม. × '+coats+' รอบ = '+fmt(coatArea)+' ตร.ม.',
+      '1L ทาได้ '+fmt(p.coveragePerL)+' ตร.ม./รอบ',
+      'ต้องใช้สี = '+fmt(coatArea)+' ÷ '+fmt(p.coveragePerL)+' = '+fmt(needL)+' L',
+      'ปัดขึ้นเป็น '+fmt(main.reduce(function(s,b){return s+b.n*b.sizeL;},0))+' L (แนะนำ)'
+    ];
+    var copyText = '【คำแนะนำปริมาณสี】'+p.label+': พื้นที่ '+fmt(area)+' ตร.ม. ทา '+coats+' รอบ '
+      +'ต้องทาทั้งหมด '+fmt(coatArea)+' ตร.ม. แนะนำซื้อ: '+main.map(function(b){return b.n+' กระป๋อง '+b.label;}).join(' + ')+' ค่ะ';
+    return {main:main, alt:alt, steps:steps, copyText:copyText,
+            head:'ต้องทาทั้งหมด <b>'+fmt(coatArea)+' ตร.ม.</b> ('+fmt(area)+'ตร.ม. × '+coats+' รอบ) ต้องใช้สี '+fmt(needL)+' L (≈ '+fmt(needL*1000)+' ml)'};
+  }
+
+  function calcWall(p, area){
+    var coats = state.coats;
+    var coatArea = area*coats;
+    var n = ceil(coatArea / p.coveragePerPack);
+    var main = [{n:n, sizeL:1.1, label:p.packs[0].label}];
+    var steps = [
+      'พื้นที่ทา: '+fmt(area)+' ตร.ม. × '+coats+' รอบ = '+fmt(coatArea)+' ตร.ม.',
+      '1 กระป๋อง 1.1L ทาได้ '+p.coveragePerPack+' ตร.ม./รอบ',
+      'จำนวนกระป๋อง = '+fmt(coatArea)+' ÷ '+p.coveragePerPack+' = '+fmt(coatArea/p.coveragePerPack)+' กระป๋อง',
+      'ปัดขึ้น → '+n+' กระป๋อง'
+    ];
+    var copyText = '【คำแนะนำปริมาณสี】'+p.label+': พื้นที่ '+fmt(area)+' ตร.ม. ทา '+coats+' รอบ รวม '+fmt(coatArea)+' ตร.ม. แนะนำซื้อ '+n+' กระป๋อง 1.1L ค่ะ';
+    return {main:main, alt:[], steps:steps, copyText:copyText,
+            head:'ต้องทาทั้งหมด <b>'+fmt(coatArea)+' ตร.ม.</b> ('+fmt(area)+'ตร.ม. × '+coats+' รอบ)'};
+  }
+
+  function calcFloorSys(p, area){
+    var rows = [], steps = ['พื้นที่พื้น: '+fmt(area)+' ตร.ม.'], copyParts = [];
+    p.parts.forEach(function(pt){
+      var needL = area / pt.coverageJobPerL;
+      var n = ceil(needL);
+      rows.push({name:pt.name, coats:pt.coats, n:n, needL:needL, label:p.packs[0].label});
+      steps.push(pt.name+': '+fmt(area)+' ตร.ม. ÷ '+fmt(pt.coverageJobPerL)+' ตร.ม./กระป๋อง ('+pt.coats+' รอบ) = '+fmt(needL)+' → ปัดเป็น '+n+' กระป๋อง');
+      copyParts.push(pt.name+' '+n+' กระป๋อง');
+    });
+    var copyText = '【คำแนะนำปริมาณสี】สีทาพื้น ('+fmt(area)+' ตร.ม.): '+copyParts.join(', ')+' (1L) ลำดับการทา: รองพื้น → สีจริง → เคลือบใส ค่ะ';
+    return {rows:rows, steps:steps, copyText:copyText,
+            head:'ชุดสีทาพื้น · พื้นที่ <b>'+fmt(area)+' ตร.ม.</b>'};
+  }
+
+  function calcSelfLevel(p, area){
+    var n = ceil(area / p.areaPerKg);
+    var main = [{n:n, label:p.packs[0].label}];
+    var steps = [
+      'พื้นที่พื้น: '+fmt(area)+' ตร.ม.',
+      '1kg เทได้หนา 3mm ประมาณ '+p.areaPerKg+' ตร.ม.',
+      'จำนวนชุด = '+fmt(area)+' ÷ '+p.areaPerKg+' = '+fmt(area/p.areaPerKg)+' ชุด',
+      'ปัดขึ้น → '+n+' ชุด'
+    ];
+    var copyText = '【คำแนะนำปริมาณสี】สีอีพ็อกซี่เทพื้นปรับระดับ: พื้น '+fmt(area)+' ตร.ม. เทหนา ≈3mm แนะนำซื้อ '+n+' ชุด 1kg (800g + 200g ตัวทำแข็ง) ค่ะ';
+    return {main:main, alt:[], steps:steps, copyText:copyText,
+            head:'พื้นที่พื้น <b>'+fmt(area)+' ตร.ม.</b> · เท 1 รอบ (หนา ≈3mm)'};
+  }
+
+  function calcEpoxy(p, area){
+    var totalKg = area * p.kgPerCoatSqm * state.coats;
+    var large = Math.floor(totalKg/3 + 1e-9);
+    var rem = totalKg - large*3;
+    var small = rem>0 ? ceil(rem/0.8) : 0;
+    var main = [];
+    if(large>0) main.push({n:large, label:p.packs[0].label});
+    if(small>0) main.push({n:small, label:p.packs[1].label});
+    var altSmall = ceil(totalKg/0.8);
+    var steps = [
+      'พื้นที่พื้น: '+fmt(area)+' ตร.ม. × 2 รอบ × 0.1kg/ตร.ม./รอบ = '+fmt(totalKg)+' kg (รวมตัวทำแข็ง)',
+      'ชุดใหญ่ 3kg ทาได้ 15 ตร.ม./2 รอบ; ชุดเล็ก 0.8kg ทาได้ 4 ตร.ม./2 รอบ',
+      'แนะนำ: '+main.map(function(b){return b.n+' ชุด '+b.label;}).join(' + ')
+    ];
+    var copyText = '【คำแนะนำปริมาณสี】สีอีพ็อกซี่พื้น: พื้น '+fmt(area)+' ตร.ม. ทา 2 รอบ ต้องใช้ ≈'+fmt(totalKg)+'kg แนะนำซื้อ: '+main.map(function(b){return b.n+' ชุด '+b.label;}).join(' + ')+' ค่ะ';
+    return {main:main, alt:[{n:altSmall, label:p.packs[1].label}], steps:steps, copyText:copyText,
+            head:'พื้นที่พื้น <b>'+fmt(area)+' ตร.ม.</b> · ทา 2 รอบ · ต้องใช้ ≈<b>'+fmt(totalKg)+' kg</b> (รวมตัวทำแข็ง)'};
+  }
+
+  /* ============ ตารางเทียบช่วงพื้นที่ (อัปเดตตามสินค้า/สี/รอบ) ============ */
+  function shortLabel(label){
+    return String(label).replace(/\([^)]*\)/g, '');
+  }
+  function buyStr(main){
+    if(!main || !main.length) return '—';
+    return main.map(function(b){ return b.n+' กระป๋อง '+shortLabel(b.label); }).join(' + ');
+  }
+  function renderIntervalTable(){
+    var p = cur(), coats = state.coats;
+    var coatsTxt = (p.calc==='floorsys') ? 'รองพื้น 1 · สีจริง 2 · เคลือบใส 1 รอบ' : (coats + ' รอบ');
+    $('intervalTitle').textContent = 'ปัจจุบัน: ' + p.label
+      + (p.colorDepth ? ' · ' + (state.color==='light'?'สีอ่อน':'สีเข้ม') : '')
+      + ' · ' + coatsTxt;
+    var r0 = getArea();
+    var curArea = r0.err ? 0 : r0.area;
+    var steps = [5,10,15,20,25,30,35,40,45,50,60,70,80,90,100];
+    if(curArea > 100) steps.push(Math.ceil(curArea/5)*5);
+    var ceil5 = curArea>0 ? Math.ceil(curArea/5)*5 : 0;
+    var isFloorSys = (p.calc==='floorsys');
+    var html = '<div class="table-wrap"><table class="interval-table"><thead><tr>';
+    if(isFloorSys){
+      html += '<th>พื้นที่ (ตร.ม.)</th><th>สีรองพื้น (1 รอบ)</th><th>สีทาพื้น (2 รอบ)</th><th>เคลือบใส (1 รอบ)</th>';
+    } else {
+      html += '<th>พื้นที่ (ตร.ม.)</th><th>พื้นที่ทา (×'+coatsTxt+')</th><th>ปริมาณที่ใช้</th><th>แนะนำให้ซื้อ</th>';
+    }
+    html += '</tr></thead><tbody>';
+    steps.forEach(function(a){
+      var m = (curArea>0 && a===ceil5);
+      if(isFloorSys){
+        var rr = calcFloorSys(p, a);
+        html += '<tr'+(m?' class="matched"':'')+'><td>'+(m?'◀ ':'')+a+'</td>';
+        rr.rows.forEach(function(x){
+          html += '<td>'+x.n+' กระป๋อง·'+shortLabel(x.label)+'</td>';
+        });
+        html += '</tr>';
+      } else {
+        var need, buy, coatTxt;
+        if(p.calc==='liters'){
+          var r1 = calcLiters(p, a);
+          need = fmt(a*coats*1000/p.coveragePerL) + ' ml';
+          buy = buyStr(r1.main);
+          coatTxt = fmt(a*coats);
+        } else if(p.calc==='wall'){
+          var r2 = calcWall(p, a);
+          need = fmt(a*coats*110) + ' ml';
+          buy = buyStr(r2.main);
+          coatTxt = fmt(a*coats);
+        } else if(p.calc==='selflevel'){
+          var r3 = calcSelfLevel(p, a);
+          need = fmt(r3.main[0].n) + ' kg';
+          buy = buyStr(r3.main);
+          coatTxt = '—';
+        } else {
+          var r4 = calcEpoxy(p, a);
+          need = fmt(a*0.2) + ' kg';
+          buy = buyStr(r4.main);
+          coatTxt = fmt(a*coats);
+        }
+        html += '<tr'+(m?' class="matched"':'')+'><td>'+(m?'◀ ':'')+a+'</td><td>'+coatTxt+'</td><td>'+need+'</td><td>'+buy+'</td></tr>';
+      }
+    });
+    html += '</tbody></table></div>';
+    html += '<div class="note-extra">คำนวณตามสินค้า รอบที่ทา และอัตราครอบคลุม ปัดขึ้นเป็นจำนวนเต็มกระป๋อง; ◀ = ช่วงของขนาดที่คุณกรอก</div>';
+    $('intervalBox').innerHTML = html;
+  }
+
+  /* ============ แสดงผลลัพธ์ ============ */
+  function renderResult(p, area, r){
+    var html = '';
+    html += '<div class="rs-total">'+r.head+'</div>';
+    html += '<div class="rs-line">📊 ตรงกับช่วงในตารางอ้างอิง: ช่วง '+fmt(Math.ceil(area/5)*5)+' ตร.ม. (ไฮไลต์ ◀ ในตาราง)</div>';
+    if(r.main && r.main.length){
+      html += '<div class="buckets">';
+      r.main.forEach(function(b){
+        html += '<div class="bucket main">'
+          + '<div><div class="b-num">'+b.n+' <small>กระป๋อง</small></div></div>'
+          + '<div class="b-name">'+esc(b.label)+'</div></div>';
+      });
+      html += '</div>';
+    }
+    if(r.rows && r.rows.length){
+      html += '<div class="buckets">';
+      r.rows.forEach(function(b){
+        html += '<div class="bucket"><div><div class="b-num">'+b.n+' <small>กระป๋อง</small></div></div>'
+          + '<div class="b-name">'+esc(b.name)+'<br><span style="font-size:12px;color:var(--sub)">'+esc(b.label)+' · '+b.coats+' รอบ</span></div></div>';
+      });
+      html += '</div>';
+    }
+    if(r.alt && r.alt.length){
+      html += '<div class="sec-title">ทางเลือกอื่น (ใช้ขนาดเล็กทั้งหมด)</div><div class="buckets">';
+      r.alt.forEach(function(b){
+        html += '<div class="bucket alt"><div><div class="b-num">'+b.n+' <small>กระป๋อง</small></div></div>'
+          + '<div class="b-name">'+esc(b.label)+'</div></div>';
+      });
+      html += '</div>';
+    }
+    html += '<div class="sec-title">วิธีคำนวณ</div><ol class="steps">';
+    r.steps.forEach(function(s){ html += '<li>'+esc(s)+'</li>'; });
+    html += '</ol>';
+    html += '<div class="sec-title">คำแนะนำการทา</div><ul class="tips">';
+    p.tips.forEach(function(t){ html += '<li>'+esc(t)+'</li>'; });
+    html += '<li style="color:var(--orange)">ตัวเลขข้างต้นเป็นค่าทางทฤษฎี แนะนำเผื่อความสูญเสียประมาณ 10% ตามหน้างานจริง</li>';
+    html += '</ul>';
+    box.innerHTML = html;
+    $('copyBtn').classList.remove('hidden');
+    $('copyBtn').onclick = function(){
+      var txt = r.copyText + ' (ตัวเลขเป็นค่าทางทฤษฎี แนะนำเผื่อประมาณ 10% ค่ะ)';
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(ok, ok);
+      } else { ok(); }
+      function ok(){
+        $('copyBtn').textContent = '✅ คัดลอกแล้ว ส่งให้ลูกค้าได้เลย';
+        setTimeout(function(){ $('copyBtn').textContent = '📋 คัดลอกข้อความแนะนำ (ส่งให้ลูกค้าได้เลย)'; }, 2000);
+      }
+    };
+  }
+
+  /* ============ ผูกเหตุการณ์ ============ */
+  buildSelect();
+  bindPills('colorPills','color',function(v){ state.color=v; state.coatsTouched=false; renderAll(); });
+  $('coatsNum').addEventListener('input',function(){
+    var v = parseInt($('coatsNum').value,10);
+    if(v>=1 && v<=6){ state.coats=v; state.coatsTouched=true; }
+    calc();
+  });
+  ['dimsIn','openIn'].forEach(function(id){
+    $(id).addEventListener('input', calc);
+  });
+  $('ceilingChk').addEventListener('change', calc);
+  renderAll();
+})();
+</script>
+</body>
+</html>
